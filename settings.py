@@ -1,7 +1,8 @@
+# settings.py
+
 TILE_SIZE = 64
 GRID_W = 12
 GRID_H = 9
 WIDTH = TILE_SIZE * GRID_W
 HEIGHT = TILE_SIZE * GRID_H
-SPEED = 4
 FPS = 60

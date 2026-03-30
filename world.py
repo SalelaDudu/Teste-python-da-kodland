@@ -47,32 +47,30 @@ class RoomManager:
         self.traps.clear()
         self.boss = None
         
-        player.grid_x, player.grid_y = 1, 4
-        player.target_x = player.grid_x * self.tile_size + self.tile_size // 2
-        player.target_y = player.grid_y * self.tile_size + self.tile_size // 2
-        player.sprite.x, player.sprite.y = player.target_x, player.target_y
-        player.is_moving = False
+        # Posição padrão da porta (usada nas salas 1, 2 e 3)
+        spawn_x, spawn_y = 5, 7 
 
         if self.current_room == 1:
             self.enemies = [
-                self.enemy_class(self.actor_class, 8, 2, self.tile_size, (5, 10, 1, 7)),
-                self.enemy_class(self.actor_class, 8, 6, self.tile_size, (5, 10, 1, 7))
+                self.enemy_class(self.actor_class, 2, 6, self.tile_size, (2, 2, 2, 6), 'vertical'),
+                self.enemy_class(self.actor_class, 9, 2, self.tile_size, (9, 9, 2, 6), 'vertical')
             ]
         elif self.current_room == 2:
             self.enemies = [
-                self.enemy_class(self.actor_class, 7, 2, self.tile_size, (4, 11, 1, 8)),
-                self.enemy_class(self.actor_class, 7, 7, self.tile_size, (4, 11, 1, 8)),
-                self.enemy_class(self.actor_class, 10, 4, self.tile_size, (4, 11, 1, 8))
+                self.enemy_class(self.actor_class, 3, 2, self.tile_size, (3, 8, 2, 2), 'horizontal'),
+                self.enemy_class(self.actor_class, 8, 6, self.tile_size, (3, 8, 6, 6), 'horizontal')
             ]
-            self.traps = [Trap(self.actor_class, 5, 4, self.tile_size), Trap(self.actor_class, 6, 4, self.tile_size)]
         elif self.current_room == 3:
             self.enemies = [
-                self.enemy_class(self.actor_class, 6, 2, self.tile_size, (2, 11, 1, 8)),
-                self.enemy_class(self.actor_class, 9, 7, self.tile_size, (2, 11, 1, 8)),
-                self.enemy_class(self.actor_class, 6, 7, self.tile_size, (2, 11, 1, 8)),
-                self.enemy_class(self.actor_class, 9, 2, self.tile_size, (2, 11, 1, 8))
+                self.enemy_class(self.actor_class, 2, 2, self.tile_size, (2, 9, 2, 6), 'perimeter')
             ]
-            self.traps = [Trap(self.actor_class, x, 4, self.tile_size) for x in range(4, 8)]
         elif self.current_room == 4:
+            # O player veio da sala 3 (movimento para a direita), então ele nasce na porta esquerda
+            spawn_x, spawn_y = 1, 4
             self.boss = self.boss_class(self.actor_class, 9, 4, self.tile_size)
-            self.traps = [Trap(self.actor_class, 4, 2, self.tile_size), Trap(self.actor_class, 4, 6, self.tile_size)]
+            
+        player.grid_x, player.grid_y = spawn_x, spawn_y
+        player.target_x = spawn_x * self.tile_size + self.tile_size // 2
+        player.target_y = spawn_y * self.tile_size + self.tile_size // 2
+        player.sprite.x, player.sprite.y = player.target_x, player.target_y
+        player.is_moving = False

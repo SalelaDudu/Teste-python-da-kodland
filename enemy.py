@@ -3,8 +3,8 @@ import math
 import random
 
 class Enemy:
-    def __init__(self, actor_class, gx, gy, tile_size, bounds):
-        self.sprite = actor_class('enemy_idle1')
+    def __init__(self, actor_class, gx, gy, tile_size, bounds, pattern='vertical'):
+        self.sprite = actor_class('enemy_idle_0')
         self.tile_size = tile_size
         self.grid_x, self.grid_y = gx, gy
         self.sprite.x = gx * tile_size + tile_size // 2
@@ -16,22 +16,51 @@ class Enemy:
         self.max_hp = 30
         self.hp = 30
         self.damage = 10
+        self.pattern = pattern
+        
+        self.dir_x = 1 if pattern == 'horizontal' else 0
+        self.dir_y = -1 if pattern == 'vertical' else 0
         
         self.state = 'idle'
         self.frame_index = 0
         self.anim_timer, self.move_timer = 0, 0
-        self.move_delay = 60
-        self.idleframes = ['enemy_idle1', 'enemy_idle2']
-        self.runframes = ['enemy_run1', 'enemy_run2']
+        self.move_delay = 50
+        self.idle_frames = ['enemy_idle_0', 'enemy_idle_1']
+        self.walk_frames = ['enemy_walk_0', 'enemy_walk_1']
 
     def think(self, player):
-        dx, dy = random.choice([(0, 1), (0, -1), (1, 0), (-1, 0)])
-        new_gx, new_gy = self.grid_x + dx, self.grid_y + dy
-        
-        if new_gx == player.grid_x and new_gy == player.grid_y:
+        if self.pattern == 'vertical':
+            new_gy = self.grid_y + self.dir_y
+            if self.bounds and (self.bounds[2] <= new_gy <= self.bounds[3]):
+                self.set_target(self.grid_x, new_gy)
+            else:
+                self.dir_y *= -1
+                self.set_target(self.grid_x, self.grid_y + self.dir_y)
+                
+        elif self.pattern == 'horizontal':
+            new_gx = self.grid_x + self.dir_x
+            if self.bounds and (self.bounds[0] <= new_gx <= self.bounds[1]):
+                self.set_target(new_gx, self.grid_y)
+            else:
+                self.dir_x *= -1
+                self.set_target(self.grid_x + self.dir_x, self.grid_y)
+                
+        elif self.pattern == 'perimeter':
+            if self.grid_y == self.bounds[2] and self.grid_x < self.bounds[1]:
+                self.set_target(self.grid_x + 1, self.grid_y) # Direita
+            elif self.grid_x == self.bounds[1] and self.grid_y < self.bounds[3]:
+                self.set_target(self.grid_x, self.grid_y + 1) # Baixo
+            elif self.grid_y == self.bounds[3] and self.grid_x > self.bounds[0]:
+                self.set_target(self.grid_x - 1, self.grid_y) # Esquerda
+            elif self.grid_x == self.bounds[0] and self.grid_y > self.bounds[2]:
+                self.set_target(self.grid_x, self.grid_y - 1) # Cima
+            else:
+                self.set_target(self.bounds[0], self.bounds[2])
+
+        # Se chocar com o player durante o movimento
+        if self.target_x // self.tile_size == player.grid_x and self.target_y // self.tile_size == player.grid_y:
             player.hp -= self.damage
-        elif self.bounds and (self.bounds[0] <= new_gx <= self.bounds[1] and self.bounds[2] <= new_gy <= self.bounds[3]):
-            self.set_target(new_gx, new_gy)
+            self.set_target(self.grid_x, self.grid_y) # Cancela passo
 
     def set_target(self, gx, gy):
         self.grid_x, self.grid_y = gx, gy
@@ -61,22 +90,22 @@ class Enemy:
         self.anim_timer += 1
         if self.anim_timer > 12:
             self.anim_timer = 0
-            self.frame_index = (self.frame_index + 1) % len(self.runframes if self.state == 'walk' else self.idleframes)
-            self.sprite.image = (self.runframes if self.state == 'walk' else self.idleframes)[self.frame_index]
+            self.frame_index = (self.frame_index + 1) % len(self.walk_frames if self.state == 'walk' else self.idle_frames)
+            self.sprite.image = (self.walk_frames if self.state == 'walk' else self.idle_frames)[self.frame_index]
 
     def draw(self):
         self.sprite.draw()
 
 class Boss(Enemy):
     def __init__(self, actor_class, gx, gy, tile_size):
-        super().__init__(actor_class, gx, gy, tile_size, None)
-        self.sprite.image = 'boss_idle1'
+        super().__init__(actor_class, gx, gy, tile_size, None, 'random')
+        self.sprite.image = 'boss_idle_0'
         self.max_hp = 150
         self.hp = 150
         self.damage = 25
         self.move_delay = 45
-        self.idleframes = ['boss_idle1', 'boss_idle2']
-        self.runframes = ['boss_run1', 'boss_run2']
+        self.idle_frames = ['boss_idle_0', 'boss_idle_1']
+        self.walk_frames = ['boss_walk_0', 'boss_walk_1']
 
     def think(self, player):
         dx, dy = 0, 0
