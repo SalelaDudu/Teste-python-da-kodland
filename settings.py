@@ -1,8 +1,6 @@
 # settings.py
 
 TILE_SIZE = 64
-GRID_W = 12
-GRID_H = 9
-WIDTH = TILE_SIZE * GRID_W
-HEIGHT = TILE_SIZE * GRID_H
+WIDTH = 1024  # Tamanho de tela amplo e ajustável
+HEIGHT = 768
 FPS = 60

@@ -7,9 +7,8 @@ class Enemy:
         self.sprite = actor_class('enemy_idle_0')
         self.tile_size = tile_size
         self.grid_x, self.grid_y = gx, gy
-        self.sprite.x = gx * tile_size + tile_size // 2
-        self.sprite.y = gy * tile_size + tile_size // 2
-        self.target_x, self.target_y = self.sprite.x, self.sprite.y
+        self.offset_x, self.offset_y = 0, 0
+        self.target_x, self.target_y = 0, 0
         self.is_moving = False
         self.bounds = bounds
         
@@ -27,6 +26,14 @@ class Enemy:
         self.move_delay = 50
         self.idle_frames = ['enemy_idle_0', 'enemy_idle_1']
         self.walk_frames = ['enemy_walk_0', 'enemy_walk_1']
+
+    def set_offset(self, ox, oy):
+        self.offset_x = ox
+        self.offset_y = oy
+        self.target_x = self.grid_x * self.tile_size + self.tile_size // 2 + self.offset_x
+        self.target_y = self.grid_y * self.tile_size + self.tile_size // 2 + self.offset_y
+        self.sprite.x = self.target_x
+        self.sprite.y = self.target_y
 
     def think(self, player):
         if self.pattern == 'vertical':
@@ -47,25 +54,24 @@ class Enemy:
                 
         elif self.pattern == 'perimeter':
             if self.grid_y == self.bounds[2] and self.grid_x < self.bounds[1]:
-                self.set_target(self.grid_x + 1, self.grid_y) # Direita
+                self.set_target(self.grid_x + 1, self.grid_y)
             elif self.grid_x == self.bounds[1] and self.grid_y < self.bounds[3]:
-                self.set_target(self.grid_x, self.grid_y + 1) # Baixo
+                self.set_target(self.grid_x, self.grid_y + 1)
             elif self.grid_y == self.bounds[3] and self.grid_x > self.bounds[0]:
-                self.set_target(self.grid_x - 1, self.grid_y) # Esquerda
+                self.set_target(self.grid_x - 1, self.grid_y)
             elif self.grid_x == self.bounds[0] and self.grid_y > self.bounds[2]:
-                self.set_target(self.grid_x, self.grid_y - 1) # Cima
+                self.set_target(self.grid_x, self.grid_y - 1)
             else:
                 self.set_target(self.bounds[0], self.bounds[2])
 
-        # Se chocar com o player durante o movimento
         if self.target_x // self.tile_size == player.grid_x and self.target_y // self.tile_size == player.grid_y:
             player.hp -= self.damage
-            self.set_target(self.grid_x, self.grid_y) # Cancela passo
+            self.set_target(self.grid_x, self.grid_y)
 
     def set_target(self, gx, gy):
         self.grid_x, self.grid_y = gx, gy
-        self.target_x = self.grid_x * self.tile_size + self.tile_size // 2
-        self.target_y = self.grid_y * self.tile_size + self.tile_size // 2
+        self.target_x = self.grid_x * self.tile_size + self.tile_size // 2 + self.offset_x
+        self.target_y = self.grid_y * self.tile_size + self.tile_size // 2 + self.offset_y
         self.is_moving = True
         self.state = 'walk'
 

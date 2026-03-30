@@ -15,11 +15,10 @@ room_mgr = None
 active_items = []
 projectiles = []
 
-# Variáveis para transição suave de câmera
+# Variáveis para transição de câmera
 cam_x, cam_y = 0, 0
 cam_target_x, cam_target_y = 0, 0
-old_floor_x, old_floor_y = 0, 0
-new_floor_x, new_floor_y = 0, 0
+old_room_data = {}
 
 def generate_items():
     global active_items
@@ -32,27 +31,34 @@ def generate_items():
         active_items.append(Item(t, r))
 
 def start_camera_transition():
-    global state, cam_x, cam_y, cam_target_x, cam_target_y, old_floor_x, old_floor_y, new_floor_x, new_floor_y
+    global state, cam_x, cam_y, cam_target_x, cam_target_y, old_room_data
+    
+    old_room_data = {
+        'cols': room_mgr.cols,
+        'rows': room_mgr.rows,
+        'offset_x': room_mgr.offset_x,
+        'offset_y': room_mgr.offset_y,
+        'floor_tex': room_mgr.floor_tex,
+        'door_pos': room_mgr.door_pos,
+        'door_tex': room_mgr.door_tex
+    }
+    
     room_mgr.current_room += 1
     state = "TRANSITION"
     cam_x, cam_y = 0, 0
-    old_floor_x, old_floor_y = 0, 0
     
-    # Direção de acordo com o desenho
     if room_mgr.current_room in (2, 3):
         cam_target_x, cam_target_y = 0, -HEIGHT
-        new_floor_x, new_floor_y = 0, -HEIGHT
     elif room_mgr.current_room == 4:
         cam_target_x, cam_target_y = WIDTH, 0
-        new_floor_x, new_floor_y = WIDTH, 0
         
     projectiles.clear()
     room_mgr.load_room(player)
 
 def reset_game():
     global player, room_mgr, state, projectiles
-    player = Player(Actor, 5, 7, TILE_SIZE)
-    room_mgr = RoomManager(Actor, Enemy, Boss, TILE_SIZE)
+    player = Player(Actor, TILE_SIZE)
+    room_mgr = RoomManager(Actor, Enemy, Boss, TILE_SIZE, WIDTH, HEIGHT)
     projectiles.clear()
     room_mgr.load_room(player)
     state = "PLAYING"
@@ -60,10 +66,19 @@ def reset_game():
         try: music.play("bg_music")
         except: pass
 
-def draw_floor(screen, ox, oy):
-    for x in range(0, WIDTH, TILE_SIZE):
-        for y in range(0, HEIGHT, TILE_SIZE):
-            screen.draw.rect(Rect(x + ox, y + oy, TILE_SIZE, TILE_SIZE), (40, 40, 40))
+def draw_room_textures(screen, cols, rows, ox, oy, floor_tex, door_tex, door_pos, cam_ox, cam_oy):
+    start_x = ox + cam_ox
+    start_y = oy + cam_oy
+    
+    # Desenha os blocos de chão apenas na área da sala
+    for c in range(cols):
+        for r in range(rows):
+            screen.blit(floor_tex, (start_x + c * TILE_SIZE, start_y + r * TILE_SIZE))
+            
+    # Desenha a porta
+    if door_pos[0] != -1:
+        dx, dy = door_pos
+        screen.blit(door_tex, (start_x + dx * TILE_SIZE, start_y + dy * TILE_SIZE))
 
 def draw_with_offset(entity, ox, oy):
     if entity:
@@ -79,8 +94,10 @@ def draw():
         menu.draw(screen)
         
     elif state in ("PLAYING", "ITEM_SELECT"):
-        screen.fill((20, 20, 20))
-        draw_floor(screen, 0, 0)
+        screen.fill((20, 20, 20)) # O fundo fora da sala fica cinza escuro/preto
+        
+        draw_room_textures(screen, room_mgr.cols, room_mgr.rows, room_mgr.offset_x, room_mgr.offset_y, 
+                           room_mgr.floor_tex, room_mgr.door_tex, room_mgr.door_pos, 0, 0)
 
         for t in room_mgr.traps: t.draw()
         for e in room_mgr.enemies: e.draw()
@@ -89,7 +106,7 @@ def draw():
         player.draw()
 
         screen.draw.text(f"HP: {player.hp}/{player.max_hp}", topleft=(10, 10), color="white", fontsize=30)
-        screen.draw.text(f"ROOM: {room_mgr.current_room}/4", topright=(WIDTH - 10, 10), color="white", fontsize=30)
+        screen.draw.text(f"ROOM: {room_mgr.current_room}", topright=(WIDTH - 10, 10), color="white", fontsize=30)
 
         if room_mgr.boss:
             bar_w, bar_h = 400, 20
@@ -107,17 +124,23 @@ def draw():
             
     elif state == "TRANSITION":
         screen.fill((20, 20, 20))
-        # Desenha as duas salas com deslocamento
-        draw_floor(screen, old_floor_x - cam_x, old_floor_y - cam_y)
-        draw_floor(screen, new_floor_x - cam_x, new_floor_y - cam_y)
         
-        ox = new_floor_x - cam_x
-        oy = new_floor_y - cam_y
+        # Desenha a sala velha escorregando
+        old_cam_ox = -cam_x
+        old_cam_oy = -cam_y
+        draw_room_textures(screen, old_room_data['cols'], old_room_data['rows'], old_room_data['offset_x'], old_room_data['offset_y'],
+                           old_room_data['floor_tex'], old_room_data['door_tex'], old_room_data['door_pos'], old_cam_ox, old_cam_oy)
         
-        for t in room_mgr.traps: draw_with_offset(t, ox, oy)
-        for e in room_mgr.enemies: draw_with_offset(e, ox, oy)
-        if room_mgr.boss: draw_with_offset(room_mgr.boss, ox, oy)
-        draw_with_offset(player, ox, oy)
+        # Desenha a sala nova entrando
+        new_cam_ox = cam_target_x - cam_x
+        new_cam_oy = cam_target_y - cam_y
+        draw_room_textures(screen, room_mgr.cols, room_mgr.rows, room_mgr.offset_x, room_mgr.offset_y,
+                           room_mgr.floor_tex, room_mgr.door_tex, room_mgr.door_pos, new_cam_ox, new_cam_oy)
+        
+        for t in room_mgr.traps: draw_with_offset(t, new_cam_ox, new_cam_oy)
+        for e in room_mgr.enemies: draw_with_offset(e, new_cam_ox, new_cam_oy)
+        if room_mgr.boss: draw_with_offset(room_mgr.boss, new_cam_ox, new_cam_oy)
+        draw_with_offset(player, new_cam_ox, new_cam_oy)
 
     elif state == "GAME_OVER":
         screen.fill((100, 0, 0))
@@ -150,7 +173,6 @@ def update():
                 state = "VICTORY"
                 
     elif state == "TRANSITION":
-        # Interpolação de movimento suave da câmera
         cam_speed = 15
         if cam_x < cam_target_x: cam_x = min(cam_x + cam_speed, cam_target_x)
         elif cam_x > cam_target_x: cam_x = max(cam_x - cam_speed, cam_target_x)
@@ -164,10 +186,10 @@ def update():
 def on_key_down(key):
     global projectiles
     if state == "PLAYING":
-        if key in (keys.UP, keys.W): player.move(0, -1, GRID_W, GRID_H, room_mgr.enemies, room_mgr.boss, room_mgr.traps)
-        elif key in (keys.DOWN, keys.S): player.move(0, 1, GRID_W, GRID_H, room_mgr.enemies, room_mgr.boss, room_mgr.traps)
-        elif key in (keys.LEFT, keys.A): player.move(-1, 0, GRID_W, GRID_H, room_mgr.enemies, room_mgr.boss, room_mgr.traps)
-        elif key in (keys.RIGHT, keys.D): player.move(1, 0, GRID_W, GRID_H, room_mgr.enemies, room_mgr.boss, room_mgr.traps)
+        if key in (keys.UP, keys.W): player.move(0, -1, room_mgr.cols, room_mgr.rows, room_mgr.enemies, room_mgr.boss, room_mgr.traps)
+        elif key in (keys.DOWN, keys.S): player.move(0, 1, room_mgr.cols, room_mgr.rows, room_mgr.enemies, room_mgr.boss, room_mgr.traps)
+        elif key in (keys.LEFT, keys.A): player.move(-1, 0, room_mgr.cols, room_mgr.rows, room_mgr.enemies, room_mgr.boss, room_mgr.traps)
+        elif key in (keys.RIGHT, keys.D): player.move(1, 0, room_mgr.cols, room_mgr.rows, room_mgr.enemies, room_mgr.boss, room_mgr.traps)
         elif key == keys.SPACE:
             p = Projectile(Actor, player.sprite.x, player.sprite.y, player.last_dir[0], player.last_dir[1], player.damage)
             projectiles.append(p)
