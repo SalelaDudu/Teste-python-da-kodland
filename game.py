@@ -1,14 +1,16 @@
-# main.py
 import pgzrun
 from pygame import Rect
 from settings import *
 from player import Player
-# Importa os novos inimigos
 from enemy import Enemy, Enemy2, Enemy3, Boss 
 from menu import Menu
 from world import RoomManager, Item
 from projectile import Projectile
 
+# nome da janela
+TITLE = "Tiny Dungeon"
+
+# Variaveis globais
 state = "MENU"
 menu = Menu(WIDTH, HEIGHT, Actor)
 player = None
@@ -16,10 +18,12 @@ room_mgr = None
 active_items = []
 projectiles = []
 
+# camera
 cam_x, cam_y = 0, 0
 cam_target_x, cam_target_y = 0, 0
 old_room_data = {}
 
+# cards de upgrade no fin da cena
 def generate_items():
     global active_items
     active_items.clear()
@@ -30,8 +34,10 @@ def generate_items():
         r = Rect(start_x + i * spacing - 100, HEIGHT // 2 - 100, 200, 200)
         active_items.append(Item(t, r))
 
+# rolagem macia entre as salas
 def start_camera_transition():
     global state, cam_x, cam_y, cam_target_x, cam_target_y, old_room_data
+    
     old_room_data = {
         'cols': room_mgr.cols, 'rows': room_mgr.rows,
         'offset_x': room_mgr.offset_x, 'offset_y': room_mgr.offset_y,
@@ -42,16 +48,18 @@ def start_camera_transition():
     state = "TRANSITION"
     cam_x, cam_y = 0, 0
     
-    if room_mgr.current_room in (2, 3): cam_target_x, cam_target_y = 0, -HEIGHT
-    elif room_mgr.current_room == 4: cam_target_x, cam_target_y = WIDTH, 0
+    if room_mgr.current_room in (2, 3): 
+        cam_target_x, cam_target_y = 0, -HEIGHT
+    elif room_mgr.current_room == 4: 
+        cam_target_x, cam_target_y = WIDTH, 0
         
     projectiles.clear()
     room_mgr.load_room(player)
 
+# Opcoes de reset
 def reset_game():
     global player, room_mgr, state, projectiles
     player = Player(Actor, TILE_SIZE)
-    # Passa as novas classes para o RoomManager
     room_mgr = RoomManager(Actor, Enemy, Enemy2, Enemy3, Boss, TILE_SIZE, WIDTH, HEIGHT)
     projectiles.clear()
     room_mgr.load_room(player)
@@ -63,6 +71,7 @@ def reset_game():
             music.set_volume(0.3)
         except: pass
 
+# Renderizacao
 def draw_room_textures(screen, cols, rows, ox, oy, floor_tex, door_tex, door_pos, cam_ox, cam_oy):
     start_x = ox + cam_ox
     start_y = oy + cam_oy
@@ -85,6 +94,7 @@ def draw_with_offset(entity, ox, oy):
 
 def draw():
     screen.clear()
+    
     if state == "MENU":
         menu.draw(screen)
         
@@ -99,7 +109,7 @@ def draw():
         screen.fill((20, 20, 20)) 
         
         draw_room_textures(screen, room_mgr.cols, room_mgr.rows, room_mgr.offset_x, room_mgr.offset_y, 
-                           room_mgr.floor_tex, room_mgr.door_tex, room_mgr.door_pos, 0, 0)
+                                room_mgr.floor_tex, room_mgr.door_tex, room_mgr.door_pos, 0, 0)
 
         for t in room_mgr.traps: t.draw()
         for e in room_mgr.enemies: e.draw()
@@ -107,6 +117,7 @@ def draw():
         for p in projectiles: p.draw()
         player.draw()
 
+        # Textos HUD
         screen.draw.text(f"HP: {player.hp}/{player.max_hp}", topleft=(10, 10), color="white", fontname="pixeled", fontsize=30)
         screen.draw.text(f"ROOM: {room_mgr.current_room}", topright=(WIDTH - 10, 10), color="white", fontname="pixeled", fontsize=30)
 
@@ -128,12 +139,12 @@ def draw():
         screen.fill((20, 20, 20))
         old_cam_ox, old_cam_oy = -cam_x, -cam_y
         draw_room_textures(screen, old_room_data['cols'], old_room_data['rows'], old_room_data['offset_x'], old_room_data['offset_y'],
-                           old_room_data['floor_tex'], old_room_data['door_tex'], old_room_data['door_pos'], old_cam_ox, old_cam_oy)
+                            old_room_data['floor_tex'], old_room_data['door_tex'], old_room_data['door_pos'], old_cam_ox, old_cam_oy)
         
         new_cam_ox = cam_target_x - cam_x
         new_cam_oy = cam_target_y - cam_y
         draw_room_textures(screen, room_mgr.cols, room_mgr.rows, room_mgr.offset_x, room_mgr.offset_y,
-                           room_mgr.floor_tex, room_mgr.door_tex, room_mgr.door_pos, new_cam_ox, new_cam_oy)
+                            room_mgr.floor_tex, room_mgr.door_tex, room_mgr.door_pos, new_cam_ox, new_cam_oy)
         
         for t in room_mgr.traps: draw_with_offset(t, new_cam_ox, new_cam_oy)
         for e in room_mgr.enemies: draw_with_offset(e, new_cam_ox, new_cam_oy)
@@ -142,20 +153,23 @@ def draw():
 
     elif state == "GAME_OVER":
         screen.fill((100, 0, 0))
-        screen.draw.text("GAME OVER", center=(WIDTH//2, HEIGHT//2), fontsize=60, color="white", fontname="pixeled")
+        screen.draw.text("Fim de jogo", center=(WIDTH//2, HEIGHT//2), fontsize=60, color="white", fontname="pixeled")
+        
     elif state == "VICTORY":
         screen.fill((0, 100, 0))
-        screen.draw.text("YOU WON!", center=(WIDTH//2, HEIGHT//2), fontsize=60, color="white", fontname="pixeled")
+        screen.draw.text("VITORIA!", center=(WIDTH//2, HEIGHT//2), fontsize=60, color="white", fontname="pixeled")
 
+# Loop de jogo 60 frames
 def update():
     global state, projectiles, cam_x, cam_y
+    
     if state == "PLAYING":
-        
         prev_p_hp = player.hp
         prev_e_hp = sum(e.hp for e in room_mgr.enemies)
         if room_mgr.boss: prev_e_hp += room_mgr.boss.hp
         
         player.update()
+        
         for p in projectiles: p.update(WIDTH, HEIGHT, room_mgr.enemies, room_mgr.boss)
         projectiles = [p for p in projectiles if p.active]
         
@@ -168,6 +182,7 @@ def update():
         curr_e_hp = sum(e.hp for e in room_mgr.enemies)
         if room_mgr.boss: curr_e_hp += room_mgr.boss.hp
         
+        # Audio de combate
         if menu.sound_on:
             if player.hp < prev_p_hp:
                 try: sounds.hurt_sound.play()
@@ -176,6 +191,7 @@ def update():
                 try: sounds.hit_sound.play()
                 except: pass
 
+        # verifica se acaba o jogo
         if player.hp <= 0: 
             state = "GAME_OVER"
             try: music.stop()
@@ -191,13 +207,17 @@ def update():
                 except: pass
                 
     elif state == "TRANSITION":
+        # camera de transicao
         cam_speed = 15
         if cam_x < cam_target_x: cam_x = min(cam_x + cam_speed, cam_target_x)
         elif cam_x > cam_target_x: cam_x = max(cam_x - cam_speed, cam_target_x)
         if cam_y < cam_target_y: cam_y = min(cam_y + cam_speed, cam_target_y)
         elif cam_y > cam_target_y: cam_y = max(cam_y - cam_speed, cam_target_y)
-        if cam_x == cam_target_x and cam_y == cam_target_y: state = "PLAYING"
+        
+        if cam_x == cam_target_x and cam_y == cam_target_y: 
+            state = "PLAYING"
 
+# Input
 def on_key_down(key):
     global projectiles
     
@@ -214,8 +234,10 @@ def on_key_down(key):
             p = Projectile(Actor, player.sprite.x, player.sprite.y, player.last_dir[0], player.last_dir[1], player.damage)
             projectiles.append(p)
 
+# Mouse input
 def on_mouse_down(pos):
     global state
+    
     if state == "MENU":
         action = menu.handle_click(pos)
         if action == "START": 
@@ -224,12 +246,15 @@ def on_mouse_down(pos):
             if not menu.sound_on:
                 try: music.stop()
                 except: pass
-        elif action == "EXIT": exit()
+        elif action == "EXIT": 
+            exit()
+            
     elif state == "ITEM_SELECT":
         for item in active_items:
             if item.rect.collidepoint(pos):
                 item.apply(player)
                 start_camera_transition()
+                
     elif state in ("GAME_OVER", "VICTORY"):
         state = "MENU"
 

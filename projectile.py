@@ -1,5 +1,3 @@
-# projectile.py
-
 class Projectile:
     def __init__(self, actor_class, x, y, dx, dy, damage):
         self.sprite = actor_class('projectile_idle')
@@ -19,12 +17,15 @@ class Projectile:
         self.sprite.y += self.dy * self.speed
 
         hit_target = False
+        
+        # colisao
         for e in enemies:
             if e.hp > 0 and self.sprite.colliderect(e.sprite):
                 e.hp -= self.damage
                 hit_target = True
                 break
         
+        # colisao com boss
         if not hit_target and boss and boss.hp > 0 and self.sprite.colliderect(boss.sprite):
             boss.hp -= self.damage
             hit_target = True
@@ -33,8 +34,9 @@ class Projectile:
             self.active = False
             return
 
+        # destroi ao sair da tela
         is_off_screen = (self.sprite.right < 0 or self.sprite.left > width or 
-                         self.sprite.bottom < 0 or self.sprite.top > height)
+                            self.sprite.bottom < 0 or self.sprite.top > height)
 
         if is_off_screen:
             self.off_screen_timer += 1

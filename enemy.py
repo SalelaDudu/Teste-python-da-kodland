@@ -1,4 +1,3 @@
-# enemy.py
 import math
 
 class Enemy:
@@ -11,8 +10,8 @@ class Enemy:
         self.is_moving = False
         self.bounds = bounds
         
-        self.max_hp = 30
-        self.hp = 30
+        self.max_hp = 20
+        self.hp = 20
         self.damage = 10
         self.pattern = pattern
         
@@ -35,8 +34,8 @@ class Enemy:
         self.sprite.x = self.target_x
         self.sprite.y = self.target_y
 
+    # movimento e tomada de decisao
     def think(self, player):
-        # Calcula a intenção de movimento baseada na grade (Grid) e não em pixels
         next_gx, next_gy = self.grid_x, self.grid_y
         
         if self.pattern == 'vertical':
@@ -65,7 +64,7 @@ class Enemy:
             else:
                 next_gx, next_gy = self.bounds[0], self.bounds[2]
 
-        # CORREÇÃO DO BUG: Se o próximo passo for o jogador, ataca e não anda!
+        # Dano ao colidir no player
         if next_gx == player.grid_x and next_gy == player.grid_y:
             player.hp -= self.damage
         else:
@@ -96,6 +95,7 @@ class Enemy:
                 self.sprite.x += (dx / dist) * speed
                 self.sprite.y += (dy / dist) * speed
 
+        # Animacao
         self.anim_timer += 1
         if self.anim_timer > 12:
             self.anim_timer = 0
@@ -105,30 +105,27 @@ class Enemy:
     def draw(self):
         self.sprite.draw()
 
-
-# --- NOVOS INIMIGOS ---
-
 class Enemy2(Enemy):
     def __init__(self, actor_class, gx, gy, tile_size, bounds, pattern='vertical'):
         super().__init__(actor_class, gx, gy, tile_size, bounds, pattern, 'enemy2')
         self.max_hp = 60
         self.hp = 60
         self.damage = 10
-        self.move_delay = 80  # Anda bem mais devagar
+        self.move_delay = 80
 
 class Enemy3(Enemy):
     def __init__(self, actor_class, gx, gy, tile_size, bounds, pattern='vertical'):
         super().__init__(actor_class, gx, gy, tile_size, bounds, pattern, 'enemy3')
-        self.max_hp = 20
-        self.hp = 20
-        self.damage = 25  # Dá mais dano
-        self.move_delay = 25  # Anda muito mais rápido
+        self.max_hp = 30
+        self.hp = 30
+        self.damage = 10
+        self.move_delay = 5
 
 class Boss(Enemy):
     def __init__(self, actor_class, gx, gy, tile_size):
         super().__init__(actor_class, gx, gy, tile_size, None, 'random', 'boss')
-        self.max_hp = 150
-        self.hp = 150
+        self.max_hp = 250
+        self.hp = 250
         self.damage = 25
         self.move_delay = 45
 
