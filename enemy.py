@@ -1,10 +1,9 @@
 # enemy.py
 import math
-import random
 
 class Enemy:
-    def __init__(self, actor_class, gx, gy, tile_size, bounds, pattern='vertical'):
-        self.sprite = actor_class('enemy_idle_0')
+    def __init__(self, actor_class, gx, gy, tile_size, bounds, pattern='vertical', sprite_base='enemy'):
+        self.sprite = actor_class(f'{sprite_base}_idle_0')
         self.tile_size = tile_size
         self.grid_x, self.grid_y = gx, gy
         self.offset_x, self.offset_y = 0, 0
@@ -24,8 +23,9 @@ class Enemy:
         self.frame_index = 0
         self.anim_timer, self.move_timer = 0, 0
         self.move_delay = 50
-        self.idle_frames = ['enemy_idle_0', 'enemy_idle_1']
-        self.walk_frames = ['enemy_walk_0', 'enemy_walk_1']
+        
+        self.idle_frames = [f'{sprite_base}_idle_0', f'{sprite_base}_idle_1']
+        self.walk_frames = [f'{sprite_base}_walk_0', f'{sprite_base}_walk_1']
 
     def set_offset(self, ox, oy):
         self.offset_x = ox
@@ -36,37 +36,40 @@ class Enemy:
         self.sprite.y = self.target_y
 
     def think(self, player):
+        # Calcula a intenção de movimento baseada na grade (Grid) e não em pixels
+        next_gx, next_gy = self.grid_x, self.grid_y
+        
         if self.pattern == 'vertical':
-            new_gy = self.grid_y + self.dir_y
-            if self.bounds and (self.bounds[2] <= new_gy <= self.bounds[3]):
-                self.set_target(self.grid_x, new_gy)
+            if self.bounds and (self.bounds[2] <= self.grid_y + self.dir_y <= self.bounds[3]):
+                next_gy = self.grid_y + self.dir_y
             else:
                 self.dir_y *= -1
-                self.set_target(self.grid_x, self.grid_y + self.dir_y)
+                next_gy = self.grid_y + self.dir_y
                 
         elif self.pattern == 'horizontal':
-            new_gx = self.grid_x + self.dir_x
-            if self.bounds and (self.bounds[0] <= new_gx <= self.bounds[1]):
-                self.set_target(new_gx, self.grid_y)
+            if self.bounds and (self.bounds[0] <= self.grid_x + self.dir_x <= self.bounds[1]):
+                next_gx = self.grid_x + self.dir_x
             else:
                 self.dir_x *= -1
-                self.set_target(self.grid_x + self.dir_x, self.grid_y)
+                next_gx = self.grid_x + self.dir_x
                 
         elif self.pattern == 'perimeter':
             if self.grid_y == self.bounds[2] and self.grid_x < self.bounds[1]:
-                self.set_target(self.grid_x + 1, self.grid_y)
+                next_gx = self.grid_x + 1
             elif self.grid_x == self.bounds[1] and self.grid_y < self.bounds[3]:
-                self.set_target(self.grid_x, self.grid_y + 1)
+                next_gy = self.grid_y + 1
             elif self.grid_y == self.bounds[3] and self.grid_x > self.bounds[0]:
-                self.set_target(self.grid_x - 1, self.grid_y)
+                next_gx = self.grid_x - 1
             elif self.grid_x == self.bounds[0] and self.grid_y > self.bounds[2]:
-                self.set_target(self.grid_x, self.grid_y - 1)
+                next_gy = self.grid_y - 1
             else:
-                self.set_target(self.bounds[0], self.bounds[2])
+                next_gx, next_gy = self.bounds[0], self.bounds[2]
 
-        if self.target_x // self.tile_size == player.grid_x and self.target_y // self.tile_size == player.grid_y:
+        # CORREÇÃO DO BUG: Se o próximo passo for o jogador, ataca e não anda!
+        if next_gx == player.grid_x and next_gy == player.grid_y:
             player.hp -= self.damage
-            self.set_target(self.grid_x, self.grid_y)
+        else:
+            self.set_target(next_gx, next_gy)
 
     def set_target(self, gx, gy):
         self.grid_x, self.grid_y = gx, gy
@@ -102,16 +105,32 @@ class Enemy:
     def draw(self):
         self.sprite.draw()
 
+
+# --- NOVOS INIMIGOS ---
+
+class Enemy2(Enemy):
+    def __init__(self, actor_class, gx, gy, tile_size, bounds, pattern='vertical'):
+        super().__init__(actor_class, gx, gy, tile_size, bounds, pattern, 'enemy2')
+        self.max_hp = 60
+        self.hp = 60
+        self.damage = 10
+        self.move_delay = 80  # Anda bem mais devagar
+
+class Enemy3(Enemy):
+    def __init__(self, actor_class, gx, gy, tile_size, bounds, pattern='vertical'):
+        super().__init__(actor_class, gx, gy, tile_size, bounds, pattern, 'enemy3')
+        self.max_hp = 20
+        self.hp = 20
+        self.damage = 25  # Dá mais dano
+        self.move_delay = 25  # Anda muito mais rápido
+
 class Boss(Enemy):
     def __init__(self, actor_class, gx, gy, tile_size):
-        super().__init__(actor_class, gx, gy, tile_size, None, 'random')
-        self.sprite.image = 'boss_idle_0'
+        super().__init__(actor_class, gx, gy, tile_size, None, 'random', 'boss')
         self.max_hp = 150
         self.hp = 150
         self.damage = 25
         self.move_delay = 45
-        self.idle_frames = ['boss_idle_0', 'boss_idle_1']
-        self.walk_frames = ['boss_walk_0', 'boss_walk_1']
 
     def think(self, player):
         dx, dy = 0, 0
